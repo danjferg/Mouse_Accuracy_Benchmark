@@ -1,0 +1,96 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <style>
+      body { margin: 0px; padding: 0px; }
+      #myCanvas { border: 1px solid black }
+      #stats { border: 1px solid black }
+    </style>
+  </head>
+  <body>
+    <canvas id="myCanvas" width="900" height="600"></canvas>
+    <div>
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>size</th>
+            <th>x dist</th>
+            <th>y dist</th>
+            <th>time</th>
+            <th>misses</th>
+          </tr>
+        </thead>
+        <tbody id="stats">
+        </tbody>
+      </table>
+    <script>
+      var cnv = document.getElementById('myCanvas');
+      var ctx = cnv.getContext('2d');
+      var rect = cnv.getBoundingClientRect();
+      var stats = document.getElementById('stats');
+      var r = 25;
+      var x = 0;
+      var y = 0;
+      var num = 0;
+      var clicks = 0;
+      var lastX = 0;
+      var lastY = 0;
+      var lastTime = 0;
+      
+      // Writes data to stats
+      function writeStats(dx, dy, dt) {
+        stats.innerHTML += '<tr><td>' + num + '</td><td>' + r + '</td><td>' + 
+        dx + '</td><td>' + dy + '</td><td>' + dt + '</td><td>' + clicks + 
+        '</td></tr>';
+      }
+      
+      // Gets mouse location
+      function getMousePos(evt) {
+        return { x: evt.clientX - rect.left, y: evt.clientY - rect.top };
+      }
+      
+      // Generates random integer between two numbers
+      function getRandomInt(min, max) {
+        return Math.floor(Math.random() * (max - min + 1)) + min;
+      }
+      
+      // Chooses random location on canvas and draws target
+      function drawTarget() {
+        ctx.clearRect(0, 0, cnv.width, cnv.height);
+        r = getRandomInt(10,50);
+        x = getRandomInt(r,rect.width-r);
+        y = getRandomInt(r,rect.height-r);
+        ctx.beginPath();
+        ctx.arc(x,y,r,0,2*Math.PI);
+        ctx.stroke();
+        return;
+      }
+
+      // Capture mouse click and see if it is in the target
+      cnv.addEventListener('mousedown', function(evt) {
+        var pos = getMousePos(evt);
+        var xdif = pos.x - x;
+        var ydif = pos.y - y;
+        if(xdif*xdif + ydif*ydif < r*r) {
+          var dt = evt.timeStamp - lastTime;
+          var dx = lastX - x;
+          var dy = lastY - y;
+          if(num>0){writeStats(dx, dy, dt);}
+          num +=1;
+          clicks = 0;
+          lastX = x;
+          lastY = y;
+          lastTime = evt.timeStamp;
+          drawTarget();
+        } else {
+          clicks += 1;
+        }
+      }, false);
+      
+      // Draw the first target
+      // Need to setup a class that will auto-calc values on init
+      drawTarget();
+    </script>
+  </body>
+</html>
