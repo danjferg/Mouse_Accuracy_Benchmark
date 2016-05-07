@@ -15,35 +15,29 @@
           <tr>
             <th>#</th>
             <th>size</th>
+            <th>misses</th>
             <th>x dist</th>
             <th>y dist</th>
             <th>time</th>
-            <th>misses</th>
           </tr>
         </thead>
         <tbody id="stats">
         </tbody>
       </table>
+    </div>
     <script>
       var cnv = document.getElementById('myCanvas');
       var ctx = cnv.getContext('2d');
       var rect = cnv.getBoundingClientRect();
       var stats = document.getElementById('stats');
-      var r = 25;
-      var x = 0;
-      var y = 0;
-      var num = 0;
-      var clicks = 0;
-      var lastX = 0;
-      var lastY = 0;
-      var lastTime = 0;
-      
-      // Writes data to stats
-      function writeStats(dx, dy, dt) {
-        stats.innerHTML += '<tr><td>' + num + '</td><td>' + r + '</td><td>' + 
-        dx + '</td><td>' + dy + '</td><td>' + dt + '</td><td>' + clicks + 
-        '</td></tr>';
-      }
+      var iterations = 20; // total samples to get from user
+      var r = 0; // circle radius index
+      var m = 1; // misses index
+      var x = 2; // x coordinate index
+      var y = 3; // y coordinate index
+      var t = 4; // time index
+      var n = 0; // iteration number
+      var o = new Array(iterations+1); // observations
       
       // Gets mouse location
       function getMousePos(evt) {
@@ -58,38 +52,50 @@
       // Chooses random location on canvas and draws target
       function drawTarget() {
         ctx.clearRect(0, 0, cnv.width, cnv.height);
-        r = getRandomInt(10,50);
-        x = getRandomInt(r,rect.width-r);
-        y = getRandomInt(r,rect.height-r);
+        o[n] = new Array(5);
+        o[n][r] = getRandomInt(10,50);
+        o[n][x] = getRandomInt(o[n][r],rect.width-o[n][r]);
+        o[n][y] = getRandomInt(o[n][r],rect.height-o[n][r]);
+        o[n][m] = 0;
         ctx.beginPath();
-        ctx.arc(x,y,r,0,2*Math.PI);
+        ctx.arc(o[n][x],o[n][y],o[n][r],0,2*Math.PI);
         ctx.stroke();
         return;
       }
+      
+      // Runs linear regression and displays results
+      function runstats() {
+        for(i = 0; i <= iterations; i++){
+          stats.innerHTML += '<tr><td>' + i + '</td><td>' + o[i][r] +
+          '</td><td>' + o[i][m] + '</td><td>' + o[i][x] + '</td><td>' + o[i][y]
+          + '</td><td>' + o[i][t] + '</td></tr>';
+        }
+      }
 
-      // Capture mouse click and see if it is in the target
+      // Captures mouse click and see if it is in the target
       cnv.addEventListener('mousedown', function(evt) {
-        var pos = getMousePos(evt);
-        var xdif = pos.x - x;
-        var ydif = pos.y - y;
-        if(xdif*xdif + ydif*ydif < r*r) {
-          var dt = evt.timeStamp - lastTime;
-          var dx = lastX - x;
-          var dy = lastY - y;
-          if(num>0){writeStats(dx, dy, dt);}
-          num +=1;
-          clicks = 0;
-          lastX = x;
-          lastY = y;
-          lastTime = evt.timeStamp;
-          drawTarget();
-        } else {
-          clicks += 1;
+        if(n <= iterations) {
+          var pos = getMousePos(evt);
+          var xdif = pos.x - o[n][x];
+          var ydif = pos.y - o[n][y];
+          // Check if click is inside circle
+          if(xdif*xdif + ydif*ydif < o[n][r]*o[n][r]) {
+            o[n][t] = evt.timeStamp;
+            // Set variables for the next loop
+            n += 1;
+            if(n <= iterations) {
+              drawTarget();
+            } else {
+              runstats();
+            }
+          } else {
+            // Log click as a miss
+            o[n][m] += 1;
+          }
         }
       }, false);
       
       // Draw the first target
-      // Need to setup a class that will auto-calc values on init
       drawTarget();
     </script>
   </body>
