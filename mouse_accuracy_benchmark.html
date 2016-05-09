@@ -15,10 +15,10 @@
           <tr>
             <th>#</th>
             <th>size</th>
-            <th>misses</th>
             <th>x dist</th>
             <th>y dist</th>
             <th>time</th>
+            <th>misses</th>
           </tr>
         </thead>
         <tbody id="stats">
@@ -30,7 +30,7 @@
       var ctx = cnv.getContext('2d');
       var rect = cnv.getBoundingClientRect();
       var stats = document.getElementById('stats');
-      var iterations = 20; // total samples to get from user
+      var iterations = 2; // total samples to get from user
       var r = 0; // circle radius index
       var m = 1; // misses index
       var x = 2; // x coordinate index
@@ -65,11 +65,71 @@
       
       // Runs linear regression and displays results
       function runstats() {
+        ctx.clearRect(0, 0, cnv.width, cnv.height);
         for(i = 0; i <= iterations; i++){
           stats.innerHTML += '<tr><td>' + i + '</td><td>' + o[i][r] +
           '</td><td>' + o[i][m] + '</td><td>' + o[i][x] + '</td><td>' + o[i][y]
           + '</td><td>' + o[i][t] + '</td></tr>';
         }
+        // Prep data needed for regressions
+        var d = new Array(iterations); // distance between circles
+        var dt = new Array(iterations); // time between clicks
+        for(i = 0; i < iterations; i++) {
+          var dx = o[i+1][x] - o[i][x];
+          var dy = o[i+1][y] - o[i][y];
+          d[i] = Math.sqrt(dx*dx + dy*dy);
+          dt[i] = o[i+1][t] - o[i][t];
+        }
+        // Calculate slopes for all pairs of observations of radius vs time
+        //  and distance vs time.
+        var nr = (iterations - 1)*(iterations / 2); // # of radius samples
+        var nm = nr; // # of misses samples
+        var nx = nr; // # of distance samples
+        var drdt = new Array(nr); // radius slopes
+        var dmdt = new Array(nm); // misses slopes
+        var dxdt = new Array(nx); // distance slopes
+        for(i = 0; i < iterations; i++){
+          for(j = i + 1; j < iterations; j++){
+            var ddt = dt[i]-dt[j]; // delta time
+            var dr = o[i+1][r]-o[j+1][r]; // delta radius
+            var dm = o[i+1][m]-o[j+1][m]; // delta clicks
+            var dx = d[i]-d[j]; // delta distance
+            // If slope is infinite, remove point, otherwise add to list
+            if(dr == 0){
+              nr -= 1;
+            } else {
+              drdt[i*j] = ddt/dr;
+            }
+            if(dm == 0){
+              nm -= 1;
+            } else {
+              dmdt[i*j] = ddt/dm;
+            }
+            if(dx == 0){
+              nx -= 1;
+            } else {
+              dxdt[i*j] = ddt/dx;
+            }
+          }
+        }
+        // Find median of slopes (beta) for radius and distance vs time
+        var B = [0,0,0]; // median slope estimators
+        drdt = drdt.sort();
+        dmdt = dmdt.sort();
+        dxdt = dxdt.sort();
+        B[r] = (drdt[Math.ceil(nr/2)-1]+drdt[Math.ceil(0.5+nr/2)-1])/2;
+        if(nm > 0){
+          B[m] = (dmdt[Math.ceil(nm/2)-1]+dmdt[Math.ceil(0.5+nm/2)-1])/2;
+        }
+        B[x] = (dxdt[Math.ceil(nx/2)-1]+dxdt[Math.ceil(0.5+nx/2)-1])/2;
+        // Find intercept (alpha) using medians
+        var A = 0;
+        var a = new Array(iterations);
+        for(i = 0; i < iterations; i++){
+          a[i] = dt[i] - B[r]*o[i+1][r] - B[m]*o[i+1][m] - B[x]*d[i];
+        }
+        a = a.sort();
+        A = (a[Math.ceil(iterations/2)-1]+a[Math.ceil(0.5+iterations/2)-1])/2;
       }
 
       // Captures mouse click and see if it is in the target
